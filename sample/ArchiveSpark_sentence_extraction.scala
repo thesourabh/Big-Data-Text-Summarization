@@ -14,8 +14,8 @@ import org.apache.spark.sql.{Row, SparkSession}
 
 
 // load data from local file system
-val warcPath = "/user/cs4984cs5984f18_team9/9_Hurricane_Irma_big/"
-val cdxPath = "/user/cs4984cs5984f18_team9/9_Hurricane_Irma_big/*.cdx"
+val warcPath = "/archive_spark/archivespark_dlrl/data/sample_data/warc" //be aware on DLRL cluster, this will be HDFS path
+val cdxPath = "/archive_spark/archivespark_dlrl/data/sample_data/cdx" //be aware on DLRL cluster, this will be HDFS path
 val records = ArchiveSpark.load(WarcCdxHdfsSpec(cdxPath,warcPath))
 
 val pages = records.filter(r => r.mime == "text/html" && r.status == 200) // extract valid webpages
@@ -39,14 +39,13 @@ val cleaned = extracted.mapPartitions(partition => {
 
       partition.map(r => {
         val sentences = detector.sentDetect(r(2)).filter(_.matches(regex)).mkString(" ") // apply sentence detector
-        (r(0), r(1), sentences) // return URL, timestamp, sentences
+        (r(0), r(1), r(2), sentences) // return URL, timestamp,HtmlText, sentences
       })
 
     })
 
-val cleaned_df = cleaned.toDF("URL_s", "Timestamp_s", "Sentences_t") // convert to DataFrame format
+val cleaned_df = cleaned.toDF("URL", "Timestamp","HtmlText", "Sentences") // convert to DataFrame format
 
-cleaned_df.repartition(1).write.mode("overwrite").format("json").save("/user/cs4984cs5984f18_team9/9_Hurricane_Irma_big/sentences") // export data to your local path
-
+cleaned_df.repartition(1).write.mode("overwrite").format("json").save("/share_dir/sample_output/sentences") // export data to your local path;be aware on DLRL cluster, this will be HDFS path
 
 
